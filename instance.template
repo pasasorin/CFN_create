@@ -1,0 +1,85 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "Ec2 Instance Launch",
+  
+  "Parameters" : {
+    "InstanceType" : {
+      "Description" : "EC2 instance type",
+      "Type" : "String",
+      "Default" : "t2.medium",
+      "AllowedValues" : [ "t1.micro", "t2.micro", "t2.small", "t2.medium", "m1.small", "m1.medium", "m1.large", "m1.xlarge"],
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
+    },
+    "Subnet": {
+      "Description" : "Subnet ID",
+      "Type" : "String",
+      "Default" : "subnet-18529733",
+      "ConstraintDescription" : "must be the id of an existing Subnet."
+    },
+    "SecurityGroupID": {
+      "Description" : "SecurityGroup IDs",
+      "Type" : "String",
+      "Default" : "sg-e700f183",
+      "ConstraintDescription" : "must be the id of an existing SG."
+    },
+    "PrivateIP": {
+      "Description" : "DevPrivateIPs",
+      "Type" : "String",
+      "Default" : "172.16.16.16",
+      "ConstraintDescription" : "must be a valid private IP in the subnet"
+    },
+    "PuppetMaster": {
+      "Description" : "Puppet Master",
+      "Type" : "String",
+      "Default" : "ip-172-31-27-232.ec2.internal",
+      "ConstraintDescription" : "must be a valid DNS of puppet server"
+    }
+  },
+  
+  "Resources" : {
+     "MyEC2Instance" : {
+         "Type" : "AWS::EC2::Instance",
+         "Properties" : {
+            "ImageId" : "ami-10761778",
+            "SubnetId" : { "Ref" : "Subnet" },
+            "InstanceType" : { "Ref" : "InstanceType" },
+            "SecurityGroupIds" : [ { "Ref" : "SecurityGroupID" } ],
+            "PrivateIpAddress" : { "Ref" : "PrivateIP" },
+            "KeyName" : { "Ref" : "KeyName" },
+            "UserData": {
+              "Fn::Base64": {
+                "Fn::Join": [
+                  "\n",
+                  [
+                  "#!/bin/bash",
+                  "echo \"[main]\" >> /etc/puppet/puppet.conf",
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "echo \"server =  ",
+                        {
+                          "Ref": "PuppetMaster"
+                        },
+                        "\">> /etc/puppet/puppet.conf"
+                      ]
+                    ]
+                  },
+                  "echo \"environment = development\" >> /etc/puppet/puppet.conf",
+                  "echo \"runinterval = 5 \" >> /etc/puppet/puppet.conf",
+                  "systemctl start puppet.service"
+                  ]
+                ]            
+              }
+            }
+         }
+     }
+  }
+
+}
+
